@@ -1,0 +1,16 @@
+symbol: global
+
+results/
+
+# jupyter
+*.ipynb_checkpoints/
+
+# images
+*.tif
+*.tiff
+*.jpg
+*.avi
+*.png
+*.csv
+
+
