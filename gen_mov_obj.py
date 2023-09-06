@@ -5,6 +5,7 @@ from numpy.random import randint
 from scipy.interpolate import splprep, splev, UnivariateSpline
 from scipy.linalg import norm
 from matplotlib.patches import Ellipse
+import pickle as pkl
 
 import os
 import numpy as np
@@ -62,6 +63,7 @@ class TRACK_MASK():
 
     def make_masks(self, ind, invert_y=False, arrsize=6, debug=[]):
         '''
+        Make the trajectory masks..
         arrsize: size of the arrow
         '''
         self.frame_mask()
@@ -93,7 +95,7 @@ class TRACK_MASK():
         except:
             print('Cannot save the masks')
         ###
-        img_col = cv2.imread('results/composite.png')
+        img_col = cv2.imread('results/trace_img.png')
         img_track = cv2.imread('results/track_masks.png')
         img_superp = cv2.addWeighted(img_col, 0.5, img_track, 0.5, 0)
         cv2.imwrite('results/superp.png', img_superp)
@@ -121,6 +123,7 @@ class GEN_MOV_OBJ(TRACK_MASK):
 
     def images_and_masks_folders(self):
         '''
+        Prepare the folders for the training set..
         '''
         try:
             os.mkdir('results/images')
@@ -131,17 +134,19 @@ class GEN_MOV_OBJ(TRACK_MASK):
         except:
             print('masks folder yet exists')
 
-    def black_image(self):
+    def black_image(self, nblay=3):
         '''
+        Composite image
         '''
-        self.compos_img = np.zeros((self.w,self.h,3))
+        self.compos_img = np.zeros((self.w,self.h,nblay))
+        self.trace_img = np.zeros((self.w,self.h,3))
 
     def create_image(self):
         '''
         '''
         px = 1/plt.rcParams['figure.dpi']
         self.fig, self.ax = plt.subplots(figsize=(self.wm*px,self.hm*px),
-                                    facecolor='black')
+                                         facecolor='black')
         self.ax.axis('off')
 
     def init_objects(self,debug=[1]):
@@ -211,23 +216,28 @@ class GEN_MOV_OBJ(TRACK_MASK):
 
     def make_images(self, ind, name_img, nb_time_pts=1):
         '''
+        ind : index of the image.. eg:img0.png etc..
         '''
         self.lobjs_centers = []
         self.hist_centers = []
         self.init_objects()
-        self.black_image()
+        self.black_image(nblay=nb_time_pts)
         for i in range(nb_time_pts):
+            print(f'time point num {i}')
             self.create_image()
             self.draw_shapes()
             name_png = f'results/{name_img}{i}.png'
             plt.savefig(name_png, facecolor=self.fig.get_facecolor())
+            plt.close()
             self.image = cv2.imread(name_png)
             self.compos_img[:,:,i] = asarray(self.image)[:,:,0]
+            self.trace_img[:,:,i%3] += asarray(self.image)[:,:,0]
             # self.save_image(name_img=f'{name_img}{i}.png')
-
             print(name_img)
             self.move_objects()
-        cv2.imwrite('results/composite.png', self.compos_img)
+        cv2.imwrite('results/trace_img.png', self.trace_img)
+        with open('composite.pk', 'wb') as f:
+            pkl.dump(self.compos_img, f)
         try:
             cv2.imwrite(f'results/images/{ind}.png', self.compos_img)
         except:
